@@ -6,17 +6,16 @@
 
 package io.freemonads
 package crypto
-package interpreters
-
-import cats.implicits.catsSyntaxApplicativeId
-import cats.{Applicative, ~>}
-import org.web3j.crypto.Sign.{SignatureData, recoverFromSignature}
-import org.web3j.crypto._
-import org.web3j.utils.Numeric.hexStringToByteArray
 
 import java.math.BigInteger
 
-object ethereum {
+import cats.{Applicative, ~>}
+import cats.syntax.applicative._
+import org.web3j.crypto.{ECDSASignature, Hash, Keys}
+import org.web3j.crypto.Sign.{SignatureData, recoverFromSignature}
+import org.web3j.utils.Numeric.hexStringToByteArray
+
+package object interpreters {
 
   import api._
 

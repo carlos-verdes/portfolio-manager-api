@@ -3,6 +3,7 @@ ThisBuild / scalaVersion     := "2.13.5"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "com.callfolio"
 ThisBuild / organizationName := "Call Folio"
+ThisBuild / mainClass := Some("com.callfolio.portfolio.Main")
 
 val Http4FreeVersion = "0.0.2"
 val Web3jVersion = "5.0.0"
