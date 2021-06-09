@@ -15,21 +15,24 @@ import org.http4s.server.blaze.BlazeServerBuilder
 
 object Main extends IOApp with AppContext {
 
-  println(
-    """
-      |    .___ _____      .__  .__
-      |  __| _// ____\____ |  | |__| ____
-      | / __ |\   __\/  _ \|  | |  |/  _ \
-      |/ /_/ | |  | (  <_> )  |_|  (  <_> )
-      |\____ | |__|  \____/|____/__|\____/
-      |     \/
-      |""".stripMargin)
-
   import User._
 
   val app = Router("/users" -> userRoutes[PortfolioAlgebra, VPackEncoder, VPackDecoder]).orNotFound
 
-  override def run(args: List[String]): IO[ExitCode] =
+  override def run(args: List[String]): IO[ExitCode] = {
+
+    println(
+      """  __     ___       ___
+        | /\ \  /'___\     /\_ \    __
+        | \_\ \/\ \__/  ___\//\ \  /\_\    ___
+        | /'_` \ \ ,__\/ __`\\ \ \ \/\ \  / __`\
+        |/\ \L\ \ \ \_/\ \L\ \\_\ \_\ \ \/\ \L\ \
+        |\ \___,_\ \_\\ \____//\____\\ \_\ \____/
+        | \/__,_ /\/_/ \/___/ \/____/ \/_/\/___/
+        |""".stripMargin)
+
+    println(s"Starting server... $serverConfig")
+
     BlazeServerBuilder[IO](executionContext)
         .bindHttp(serverConfig.port, serverConfig.host)
         .withHttpApp(app)
@@ -37,4 +40,5 @@ object Main extends IOApp with AppContext {
         .use(_ => IO.never)
         .start
         .as(ExitCode.Success)
+  }
 }
