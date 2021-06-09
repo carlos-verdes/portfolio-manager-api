@@ -4,6 +4,8 @@ ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "com.callfolio"
 ThisBuild / organizationName := "Call Folio"
 ThisBuild / mainClass := Some("com.callfolio.portfolio.Main")
+ThisBuild / fork := true
+ThisBuild / cancelable := true
 
 
 val Http4FreeVersion = "0.0.2"
@@ -45,4 +47,3 @@ headerSettings(Test)
 enablePlugins(JavaAppPackaging)
 
 // See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.
-
