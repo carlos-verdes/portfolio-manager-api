@@ -33,6 +33,8 @@ object Main extends IOApp with AppContext {
 
     println(s"Starting server... $serverConfig")
 
+    sys.env.map(kv => s"${kv._1}=${kv._2}").foreach(println)
+
     BlazeServerBuilder[IO](executionContext)
         .bindHttp(serverConfig.port, serverConfig.host)
         .withHttpApp(app)

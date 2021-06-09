@@ -9,7 +9,7 @@ package com.callfolio.portfolio
 import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 
-case class ServerConfig(host: String, port: Int)
+case class ServerConfig(host: String, port: Int, other: Int)
 
 object ServerConfig {
 
