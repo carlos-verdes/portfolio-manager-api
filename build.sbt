@@ -15,8 +15,9 @@ resolvers ++= Seq(Resolver.sonatypeRepo("releases"))
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(
-    name := "portfolio-manager-api",
+    name := "dfolio-api",
     Defaults.itSettings,
+    publishMavenStyle := true,
     Compile / herokuAppName := "dfolio-api",
     libraryDependencies ++= Seq(
       "io.freemonads" %% "http4s-free" % Http4FreeVersion,
@@ -41,7 +42,7 @@ licenses += ("MIT", new URL("https://opensource.org/licenses/MIT"))
 headerLicenseStyle := HeaderLicenseStyle.SpdxSyntax
 headerSettings(Test)
 
-enablePlugins(JavaServerAppPackaging)
+enablePlugins(JavaAppPackaging)
 
 // See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.
 

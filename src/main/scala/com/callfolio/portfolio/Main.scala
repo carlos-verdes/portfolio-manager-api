@@ -15,6 +15,16 @@ import org.http4s.server.blaze.BlazeServerBuilder
 
 object Main extends IOApp with AppContext {
 
+  println(
+    """
+      |    .___ _____      .__  .__
+      |  __| _// ____\____ |  | |__| ____
+      | / __ |\   __\/  _ \|  | |  |/  _ \
+      |/ /_/ | |  | (  <_> )  |_|  (  <_> )
+      |\____ | |__|  \____/|____/__|\____/
+      |     \/
+      |""".stripMargin)
+
   import User._
 
   val app = Router("/users" -> userRoutes[PortfolioAlgebra, VPackEncoder, VPackDecoder]).orNotFound
