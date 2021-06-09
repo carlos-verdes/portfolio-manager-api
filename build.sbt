@@ -7,16 +7,24 @@ ThisBuild / mainClass := Some("com.callfolio.portfolio.Main")
 
 val Http4FreeVersion = "0.0.2"
 val Web3jVersion = "5.0.0"
+val DockerTestVersion = "0.9.9"
 
 resolvers ++= Seq(Resolver.sonatypeRepo("releases"))
 
 lazy val root = (project in file("."))
+  .configs(IntegrationTest)
   .settings(
     name := "portfolio-manager-api",
     Defaults.itSettings,
     libraryDependencies ++= Seq(
       "io.freemonads" %% "http4s-free" % Http4FreeVersion,
-      "org.web3j"     %  "core" % Web3jVersion
+      "org.web3j"     %  "core" % Web3jVersion,
+      "com.whisk"        %% "docker-testkit-specs2"       % DockerTestVersion,
+      "com.whisk"        %% "docker-testkit-impl-spotify" % DockerTestVersion % "it, test",
+      "javax.activation" %  "activation"                  % "1.1.1" % "it, test",
+      "javax.xml.bind"   %  "jaxb-api"                    % "2.3.0" % "it, test",
+      "com.sun.xml.bind" %  "jaxb-core"                   % "2.3.0" % "it, test",
+      "com.sun.xml.bind" %  "jaxb-impl"                   % "2.3.0" % "it, test"
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
     addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
@@ -24,7 +32,8 @@ lazy val root = (project in file("."))
 
 addCommandAlias("sanity", ";clean ;compile ;scalastyle ;coverage ;test ;it:test ;coverageOff ;coverageReport ;project")
 
-organizationName := "Call Folio"
+coverageExcludedPackages := """com.callfolio.portfolio.Main"""
+
 startYear := Some(2021)
 licenses += ("MIT", new URL("https://opensource.org/licenses/MIT"))
 headerLicenseStyle := HeaderLicenseStyle.SpdxSyntax
