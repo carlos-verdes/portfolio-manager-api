@@ -32,6 +32,7 @@ object Main extends IOApp with AppContext {
         |""".stripMargin)
 
     println(s"Starting server... $serverConfig")
+    println(s"Arango config... $arangoConfig")
 
     BlazeServerBuilder[IO](executionContext)
         .bindHttp(serverConfig.port, serverConfig.host)
