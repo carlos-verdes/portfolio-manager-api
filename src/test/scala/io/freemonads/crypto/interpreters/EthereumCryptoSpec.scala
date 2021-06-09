@@ -25,7 +25,7 @@ trait MessagesAndSignatures {
   val walletAddress = "0x31b26e43651e9371c88af3d36c14cfd938baf4fd"
   val wrongAddress = "0xef678007d18427e6022059dbc264f27507cd1ffc"
 
-  implicit val basicInterpreter: CryptoAlgebra ~> Id = ethereum.ethereumCryptoInterpreter[Id]
+  implicit val basicInterpreter: CryptoAlgebra ~> Id = ethereumCryptoInterpreter[Id]
 
   def messageWrongAddress(implicit dsl: CryptoDsl[CryptoAlgebra]): ApiFree[CryptoAlgebra, Unit] =
     dsl.validateMessage(msg, signature, wrongAddress)
