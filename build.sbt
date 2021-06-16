@@ -8,11 +8,14 @@ ThisBuild / fork := true
 ThisBuild / cancelable := true
 
 
-val Http4FreeVersion = "0.0.2"
+val Http4FreeVersion = "0.0.9"
+val Http4sSpecs2Version = "1.0.0"
 val Web3jVersion = "5.0.0"
 val DockerTestVersion = "0.9.9"
 
-resolvers ++= Seq(Resolver.sonatypeRepo("releases"))
+resolvers ++= Seq(
+  Resolver.sonatypeRepo("releases"),
+  "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/public")
 
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
@@ -24,6 +27,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "io.freemonads" %% "http4s-free" % Http4FreeVersion,
       "org.web3j"     %  "core" % Web3jVersion,
+      "org.specs2"       %% "specs2-http4s"               % Http4sSpecs2Version % "it, test",
       "com.whisk"        %% "docker-testkit-specs2"       % DockerTestVersion,
       "com.whisk"        %% "docker-testkit-impl-spotify" % DockerTestVersion % "it, test",
       "javax.activation" %  "activation"                  % "1.1.1" % "it, test",
@@ -45,5 +49,8 @@ headerLicenseStyle := HeaderLicenseStyle.SpdxSyntax
 headerSettings(Test)
 
 enablePlugins(JavaAppPackaging)
+
+sonatypeCredentialHost := "s01.oss.sonatype.org"
+sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 
 // See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.

@@ -12,7 +12,9 @@ import avokka.velocypack.{VPackDecoder, VPackEncoder}
 import cats.effect.IO
 import cats.~>
 import io.circe.generic.auto._
-import io.freemonads.http.resource.ResourceDsl
+import io.freemonads.api._
+import io.freemonads.crypto.CryptoDsl
+import io.freemonads.http.resource.{ResourceDsl, RestResource}
 import io.freemonads.http.rest._
 import org.http4s.HttpRoutes
 import org.http4s.circe.CirceEntityCodec._
@@ -20,38 +22,37 @@ import org.http4s.dsl.io._
 import org.http4s.headers.Location
 import org.http4s.implicits.http4sLiteralsSyntax
 
-case class UserRequest(publicAddress: String, userName: Option[String] = None)
-case class User(publicAddress: String, userName: Option[String] = None, nounce: String)
+case class UserRequest(publicAddress: String)
+case class User(publicAddress: String, userName: Option[String] = None, nonce: String)
 
 object User {
 
-  implicit class UserRequestOps(r: UserRequest) {
-
-    def withNewNounce: User = User(r.publicAddress, r.userName, UUID.randomUUID().toString)
-  }
+  def apply(publicAddress: String): User = User(publicAddress, None, UUID.randomUUID().toString)
 
   def userRoutes[Algebra[_], Encoder[_], Decoder[_]](
-      implicit http4sFreeDsl: Http4sFreeDsl[Algebra],
+      implicit cryptoDsl: CryptoDsl[Algebra],
+      http4sFreeDsl: Http4sFreeDsl[Algebra],
       resourceDsl: ResourceDsl[Algebra, Encoder, Decoder],
       encoder: Encoder[User],
       decoder: Decoder[User],
-      //cryptoDsl: CryptoDsl[Algebra],
       interpreters: Algebra ~> IO): HttpRoutes[IO] = {
 
+    import cryptoDsl._
     import http4sFreeDsl._
     import resourceDsl._
 
     HttpRoutes.of[IO] {
-      case r @ GET -> Root / _ =>
-        for {
-          userWithNonce <- fetch[User](r.uri)
-        } yield Ok(userWithNonce.body)
-      case r @ POST -> Root =>
+
+      case r @ POST -> Root / collection =>
+
         for {
           userRequest <- parseRequest[IO, UserRequest](r)
-          // TODO validate user request (valid public address, resource already exist, etc)
-          userWithNonce <- store(uri"/users", userRequest.withNewNounce)
-        } yield Created(userWithNonce.body, Location(userWithNonce.uri))
+          canonicalAddress <- validateAddress(userRequest.publicAddress)
+          userUri = uri"/" / collection / canonicalAddress
+          RestResource(userUri, user) <- fetch[User](userUri).recoverWith {
+            case _: ResourceNotFoundError => store(userUri, User(canonicalAddress))
+          }
+        } yield Created(user, Location(userUri))
     }
   }
 

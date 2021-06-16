@@ -46,3 +46,10 @@ startDocker:
 .PHONY: header
 header:
 	sbt headerCreate
+
+.PHONY: testUserCreate
+testUserCreate:
+	curl --header "Content-Type: application/json" \
+		--request POST \
+		--data '{ "publicAddress": "0x31b26E43651e9371C88aF3D36c14CfD938BaF4Fd" }' \
+		http://localhost:8080/users
