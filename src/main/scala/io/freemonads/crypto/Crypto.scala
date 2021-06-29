@@ -21,8 +21,8 @@ class CryptoDsl[F[_]](implicit I: InjectK[CryptoAlgebra, F]) {
 
   def validateAddress[R](address: String): ApiFree[F, String] = EitherT(inject(ValidateAddress(address)))
 
-  def validateMessage[R](msg: String, signature: String, publicKey: String): ApiFree[F, Unit] =
-    EitherT(inject(ValidateMessage(msg, signature, publicKey)))
+  def validateMessage[R](msg: String, signature: String, address: String): ApiFree[F, Unit] =
+    EitherT(inject(ValidateMessage(msg, signature, address)))
 
   private def inject = Free.inject[CryptoAlgebra, F]
 }
