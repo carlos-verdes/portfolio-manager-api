@@ -16,7 +16,7 @@ import io.freemonads.api._
 import io.freemonads.crypto.CryptoDsl
 import io.freemonads.http.resource.{ResourceDsl, RestResource}
 import io.freemonads.http.rest._
-import org.http4s.HttpRoutes
+import org.http4s.{HttpRoutes, Uri}
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.io._
 import org.http4s.headers.Location
@@ -24,8 +24,14 @@ import org.http4s.implicits.http4sLiteralsSyntax
 
 case class UserRequest(publicAddress: String)
 case class User(publicAddress: String, userName: Option[String] = None, nonce: String)
+case class AuthRequest(address: String, signature: String)
 
 object User {
+
+  val USERS_COLLECTION = "users"
+  val AUTH_COLLECTION = "auth"
+
+  def userUri(publicAddress: String): Uri = uri"/" / USERS_COLLECTION / publicAddress
 
   def apply(publicAddress: String): User = User(publicAddress, None, UUID.randomUUID().toString)
 
@@ -43,16 +49,24 @@ object User {
 
     HttpRoutes.of[IO] {
 
-      case r @ POST -> Root / collection =>
-
+      case r @ POST -> Root / USERS_COLLECTION =>
         for {
           userRequest <- parseRequest[IO, UserRequest](r)
           canonicalAddress <- validateAddress(userRequest.publicAddress)
-          userUri = uri"/" / collection / canonicalAddress
-          RestResource(userUri, user) <- fetch[User](userUri).recoverWith {
-            case _: ResourceNotFoundError => store(userUri, User(canonicalAddress))
+          canonicalUserUri = userUri(canonicalAddress)
+          RestResource(userUri, user) <- fetch[User](canonicalUserUri).recoverWith {
+            case _: ResourceNotFoundError => store(canonicalUserUri, User(canonicalAddress))
           }
         } yield Created(user, Location(userUri))
+
+      case r @ POST -> Root / AUTH_COLLECTION =>
+        for {
+          AuthRequest(address, signature) <- parseRequest[IO, AuthRequest](r)
+          canonicalAddress <- validateAddress(address)
+          userResource <- fetch[User](User.userUri(canonicalAddress))
+          _ <- validateMessage(userResource.body.nonce, signature, canonicalAddress)
+        } yield Ok()
+
     }
   }
 

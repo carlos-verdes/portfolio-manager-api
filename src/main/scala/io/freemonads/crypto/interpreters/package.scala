@@ -32,21 +32,21 @@ package object interpreters {
 
   def ethereumCryptoInterpreter[F[_] : Applicative]: CryptoAlgebra ~> F = new (CryptoAlgebra ~> F) {
     override def apply[A](op: CryptoAlgebra[A]): F[A] = (op match {
-
       case ValidateAddress(address) => validateAddress(address)
-
-      case ValidateMessage(msg, signature, publicKey) => validateSignedMessage(msg, signature, publicKey)
-
+      case ValidateMessage(msg, signature, address) => validateSignedMessage(msg, signature, address)
     }).asInstanceOf[A].pure
   }
 
-  def validateAddress(address: String): ApiResult[String] =
-    if (ETH_ADDRESS_REGEX.matches(address.toLowerCase)) toChecksumAddress(address).resultOk else WRONG_ETH_ADDRESS_ERROR
+  private def canonical(address: String): String = toChecksumAddress(address)
 
-  def validateSignedMessage(msg: String, signature: String, publicKey: String): ApiResult[Unit] = {
+  def validateAddress(address: String): ApiResult[String] =
+    if (ETH_ADDRESS_REGEX.matches(address.toLowerCase)) canonical(address).resultOk else WRONG_ETH_ADDRESS_ERROR
+
+  def validateSignedMessage(msg: String, signature: String, address: String): ApiResult[Unit] = {
 
     val prefixedMessage = PERSONAL_MESSAGE_PREFIX + msg.length + msg
     val messageHash = Hash.sha3(prefixedMessage.getBytes)
+    val canonicalAddress = toChecksumAddress(address)
 
     val signatureBytes = hexStringToByteArray(signature)
     val aux = signatureBytes(INDEX_64)
@@ -61,12 +61,10 @@ package object interpreters {
     var found = false
     var i = 0
     while(!found && i < 4) {
-      val candidate = recoverFromSignature(
-        i,
-        ecdaSignature,
-        messageHash)
+      val candidate = recoverFromSignature(i, ecdaSignature, messageHash)
 
-      if (candidate != null && "0x" + Keys.getAddress(candidate) == publicKey) found = true
+      if (candidate != null && canonical("0x" + Keys.getAddress(candidate)) == canonicalAddress) found = true
+
       i = i + 1
     }
 
