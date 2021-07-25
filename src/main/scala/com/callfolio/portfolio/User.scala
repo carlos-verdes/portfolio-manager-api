@@ -6,8 +6,6 @@
 
 package com.callfolio.portfolio
 
-import java.util.UUID
-
 import avokka.velocypack.{VPackDecoder, VPackEncoder}
 import cats.effect.IO
 import cats.~>
@@ -16,11 +14,11 @@ import io.freemonads.api._
 import io.freemonads.crypto.CryptoDsl
 import io.freemonads.http.resource.{ResourceDsl, RestResource}
 import io.freemonads.http.rest._
-import org.http4s.{HttpRoutes, Uri}
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.io._
 import org.http4s.headers.Location
 import org.http4s.implicits.http4sLiteralsSyntax
+import org.http4s.{HttpRoutes, Uri}
 
 case class UserRequest(publicAddress: String)
 case class User(publicAddress: String, userName: Option[String] = None, nonce: String)
@@ -33,7 +31,9 @@ object User {
 
   def userUri(publicAddress: String): Uri = uri"/" / USERS_COLLECTION / publicAddress
 
-  def apply(publicAddress: String): User = User(publicAddress, None, UUID.randomUUID().toString)
+  implicit class UserOps(user: User) {
+    def withNonce(newNonce: String): User = user.copy(nonce = newNonce)
+  }
 
   def userRoutes[Algebra[_], Encoder[_], Decoder[_]](
       implicit cryptoDsl: CryptoDsl[Algebra],
@@ -55,7 +55,11 @@ object User {
           canonicalAddress <- validateAddress(userRequest.publicAddress)
           canonicalUserUri = userUri(canonicalAddress)
           RestResource(userUri, user) <- fetch[User](canonicalUserUri).recoverWith {
-            case _: ResourceNotFoundError => store(canonicalUserUri, User(canonicalAddress))
+            case _: ResourceNotFoundError =>
+              for {
+                nonce <- createNonce(canonicalAddress)
+                user <- store(canonicalUserUri, User(canonicalAddress, None, nonce))
+              } yield user
           }
         } yield Created(user, Location(userUri))
 
@@ -63,10 +67,12 @@ object User {
         for {
           AuthRequest(address, signature) <- parseRequest[IO, AuthRequest](r)
           canonicalAddress <- validateAddress(address)
-          userResource <- fetch[User](User.userUri(canonicalAddress))
-          _ <- validateMessage(userResource.body.nonce, signature, canonicalAddress)
+          userUri = User.userUri(canonicalAddress)
+          RestResource(_, user) <- fetch[User](userUri)
+          newNonce <- createNonce(canonicalAddress)
+          _ <- store[User](userUri, user.withNonce(newNonce))
+          _ <- validateMessage(user.nonce, signature, canonicalAddress)
         } yield Ok()
-
     }
   }
 

@@ -8,6 +8,7 @@ package io.freemonads
 package crypto
 
 import java.math.BigInteger
+import java.util.UUID
 
 import cats.{Applicative, ~>}
 import cats.syntax.applicative._
@@ -22,7 +23,7 @@ package object interpreters {
 
   val ETH_ADDRESS_REGEX = "^0x[0-9a-f]{40}$".r
   val PERSONAL_MESSAGE_PREFIX = "\u0019Ethereum Signed Message:\n"
-  val SIGNATURE_ERROR = RequestFormatError(Some(s"Signature doesn't match"))
+  val SIGNATURE_ERROR = NonAuthorizedError(None)
   val WRONG_ETH_ADDRESS_ERROR = RequestFormatError(Some("Invalid address"))
 
   val INDEX_0 = 0
@@ -34,6 +35,7 @@ package object interpreters {
     override def apply[A](op: CryptoAlgebra[A]): F[A] = (op match {
       case ValidateAddress(address) => validateAddress(address)
       case ValidateMessage(msg, signature, address) => validateSignedMessage(msg, signature, address)
+      case CreateNonce(_) => UUID.randomUUID().toString.resultOk
     }).asInstanceOf[A].pure
   }
 

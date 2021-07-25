@@ -16,6 +16,7 @@ import io.freemonads.api._
 sealed trait CryptoAlgebra[Result]
 case class ValidateAddress(address: String) extends CryptoAlgebra[ApiResult[String]]
 case class ValidateMessage(msg: String, signature: String, publicKey: String) extends CryptoAlgebra[ApiResult[Unit]]
+case class CreateNonce(address: String) extends CryptoAlgebra[ApiResult[String]]
 
 class CryptoDsl[F[_]](implicit I: InjectK[CryptoAlgebra, F]) {
 
@@ -23,6 +24,8 @@ class CryptoDsl[F[_]](implicit I: InjectK[CryptoAlgebra, F]) {
 
   def validateMessage[R](msg: String, signature: String, address: String): ApiFree[F, Unit] =
     EitherT(inject(ValidateMessage(msg, signature, address)))
+
+  def createNonce(address: String): ApiFree[F, String] = EitherT(inject(CreateNonce(address)))
 
   private def inject = Free.inject[CryptoAlgebra, F]
 }
