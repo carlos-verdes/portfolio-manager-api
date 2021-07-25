@@ -55,7 +55,7 @@ class EthereumCryptoSpec extends Specification with Http4FreeMatchers[Id] with M
     dsl.validateMessage(msg, signature, walletAddress) must resultOk(())
 
   def rejectWrongSignature: MatchResult[Any] =
-    dsl.validateMessage(msg, signature2, otherAddress) must resultError[CryptoAlgebra, Unit, RequestFormatError]
+    dsl.validateMessage(msg, signature2, otherAddress) must resultError[CryptoAlgebra, Unit, NonAuthorizedError]
 
   override protected def runWithTimeout[A](fa: Id[A], timeout: FiniteDuration): A = fa
   override protected def runAwait[A](fa: Id[A]): A = fa

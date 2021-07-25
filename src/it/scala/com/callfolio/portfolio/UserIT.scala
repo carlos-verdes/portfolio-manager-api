@@ -35,6 +35,7 @@ trait UserRoutes extends AppContext with IOMatchers {
   val userAddress1 = "0xef678007d18427e6022059dbc264f27507cd1ffc"
   val canonicalAddress1 = "0xef678007D18427E6022059Dbc264f27507CD1ffC"
   val userAddress2 = "0x31b26E43651e9371C88aF3D36c14CfD938BaF4Fd"
+  val userAddress3 = "0x44A84615dD457f729bbbf85f009F3d2e8d484D91"
 
   val testNonce = "v0G9u7huK4mJb2K1"
   val signature = "0x2c6401216c9031b9a6fb8cbfccab4fcec6c951cdf40e2320108d1856eb532250576865fbcd452bcdc4c57321b619ed7a" +
@@ -42,13 +43,14 @@ trait UserRoutes extends AppContext with IOMatchers {
 
   val userRequest = routes.orNotFound
 
-  val authRequest = AuthRequest(userAddress2, signature)
+  val authRequestUser2 = AuthRequest(userAddress2, signature)
+  val badAuthRequestUser3 = AuthRequest(userAddress3, signature)
 
   val userWrongAddress = UserRequest("0xef678007d18427e6022059dbc264f27507cd1ffc")
   val wrongPathRequest = routes.orNotFound(Request[IO](Method.POST, uri"/aaa"))
 }
 
-class UserSpec(env: Env)
+class UserIT(env: Env)
     extends Specification
     with DockerKitSpotify
     with DockerArango
@@ -68,7 +70,8 @@ class UserSpec(env: Env)
         The ArangoDB container should be ready                 $arangoIsReady
         Create user with nonce                                 $createUser
         Should not match wrong path                            $wrongPathNotFound
-        Validate a signed nonce (for authentication)           $authentication
+        Validate and change a signed nonce (authentication)    $authentication
+        Change nonce after wrong authentication                $resetNonce
       """
 
   val resourceDsl = ResourceDsl.instance[PortfolioAlgebra, VPackEncoder, VPackDecoder]
@@ -90,9 +93,29 @@ class UserSpec(env: Env)
     val userResource = RestResource(User.userUri(userAddress2), userWithNonce)
 
     val createResourceRequest = resourceDsl.store[User](User.userUri(userAddress2), userWithNonce)
-    val authReq = routes.orNotFound(Request[IO](Method.POST, uri"/auth").withEntity[AuthRequest](authRequest))
+    val authReq = routes.orNotFound(Request[IO](Method.POST, uri"/auth").withEntity[AuthRequest](authRequestUser2))
 
-    (createResourceRequest must resultOk(userResource)) and (authReq must returnStatus(Ok))
+    val getUserRequest = resourceDsl.fetch[User](User.userUri(userAddress2))
+
+    (createResourceRequest must resultOk(userResource)) and
+        (authReq must returnStatus(Ok)) and
+        (getUserRequest.map(_.body.nonce) must not (resultOk(testNonce)))
+  }
+
+  def resetNonce: MatchResult[Any] = {
+
+    val userWithNonce: User = User(userAddress3, None, testNonce)
+    val userResource = RestResource(User.userUri(userAddress3), userWithNonce)
+
+    val createResourceRequest = resourceDsl.store[User](User.userUri(userAddress3), userWithNonce)
+    val authReq = routes.orNotFound(Request[IO](Method.POST, uri"/auth").withEntity[AuthRequest](badAuthRequestUser3))
+
+    val getUserRequest = resourceDsl.fetch[User](User.userUri(userAddress3))
+
+    (createResourceRequest must resultOk(userResource)) and
+        (authReq must returnStatus(Forbidden)) and
+        (getUserRequest.map(_.body.nonce) must not (resultOk(testNonce)))
+
   }
 
   def wrongPathNotFound: MatchResult[Any] = wrongPathRequest must returnStatus(NotFound)
