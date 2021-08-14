@@ -7,6 +7,7 @@
 package com.callfolio
 package portfolio
 
+import java.security.{NoSuchAlgorithmException, SecureRandom, Security}
 import scala.concurrent.Future
 
 import avokka.velocypack.{VPackDecoder, VPackEncoder}
@@ -22,7 +23,7 @@ import org.http4s.circe.CirceEntityCodec._
 import org.http4s.headers.Location
 import org.http4s.implicits._
 import org.specs2.Specification
-import org.specs2.matcher.{Http4sMatchers, IOMatchers, MatchResult}
+import org.specs2.matcher.{IOMatchers, MatchResult}
 import org.specs2.specification.core.{Env, SpecStructure}
 
 
@@ -30,7 +31,7 @@ trait UserRoutes extends AppContext with IOMatchers {
 
   import User._
 
-  val routes = userRoutes[PortfolioAlgebra, VPackEncoder, VPackDecoder]
+  val routes = publicUserRoutes[PortfolioAlgebra, VPackEncoder, VPackDecoder]
 
   val userAddress1 = "0xef678007d18427e6022059dbc264f27507cd1ffc"
   val canonicalAddress1 = "0xef678007D18427E6022059Dbc264f27507CD1ffC"
@@ -46,8 +47,24 @@ trait UserRoutes extends AppContext with IOMatchers {
   val authRequestUser2 = AuthRequest(userAddress2, signature)
   val badAuthRequestUser3 = AuthRequest(userAddress3, signature)
 
-  val userWrongAddress = UserRequest("0xef678007d18427e6022059dbc264f27507cd1ffc")
+  val userWrongAddress = CreateUser("0xef678007d18427e6022059dbc264f27507cd1ffc")
   val wrongPathRequest = routes.orNotFound(Request[IO](Method.POST, uri"/aaa"))
+
+  // Windows testing hack
+  private def tsecWindowsFix(): Unit =
+    try {
+      SecureRandom.getInstance("NativePRNGNonBlocking")
+      ()
+    } catch {
+      case _: NoSuchAlgorithmException =>
+        val secureRandom = new SecureRandom()
+        val defaultSecureRandomProvider = secureRandom.getProvider.get(s"SecureRandom.${secureRandom.getAlgorithm}")
+        secureRandom.getProvider.put("SecureRandom.NativePRNGNonBlocking", defaultSecureRandomProvider)
+        Security.addProvider(secureRandom.getProvider)
+        ()
+    }
+
+  tsecWindowsFix()
 }
 
 class UserIT(env: Env)
@@ -55,7 +72,6 @@ class UserIT(env: Env)
     with DockerKitSpotify
     with DockerArango
     with DockerTestKit
-    with Http4sMatchers[IO]
     with Http4FreeIOMatchers
     with IOMatchers
     with AppContext
@@ -80,7 +96,7 @@ class UserIT(env: Env)
 
   def createUser: MatchResult[Any] = {
 
-    val newUserReq = userRequest(Request[IO](POST, uri"/users").withEntity[UserRequest](UserRequest(userAddress1)))
+    val newUserReq = userRequest(Request[IO](POST, uri"/users").withEntity[CreateUser](CreateUser(userAddress1)))
 
     newUserReq must returnValue { (response: Response[IO]) =>
       (response must haveStatus(Created)) and (response must containHeader(Location(uri"/users" / canonicalAddress1)))

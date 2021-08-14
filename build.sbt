@@ -1,3 +1,5 @@
+import Dependencies._
+import Libraries._
 
 ThisBuild / scalaVersion     := "2.13.5"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
@@ -17,6 +19,12 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("releases"),
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/public")
 
+val mainLibraries = Seq(ioFreeMonads)
+val testLibraries = Seq(dockerTestConfig, dockerTestSpecs2, dockerTestSpotify)
+val javaxLibraries = Seq(javaxBind, javaxActivation, jaxbCore, jaxbImpl)
+
+val allLib = mainLibraries ++ testLibraries ++ javaxLibraries
+
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(
@@ -24,17 +32,7 @@ lazy val root = (project in file("."))
     Defaults.itSettings,
     publishMavenStyle := true,
     Compile / herokuAppName := "dfolio-api",
-    libraryDependencies ++= Seq(
-      "io.freemonads" %% "http4s-free" % Http4FreeVersion,
-      "org.web3j"     %  "core" % Web3jVersion,
-      "org.specs2"       %% "specs2-http4s"               % Http4sSpecs2Version % "it, test",
-      "com.whisk"        %% "docker-testkit-specs2"       % DockerTestVersion,
-      "com.whisk"        %% "docker-testkit-impl-spotify" % DockerTestVersion % "it, test",
-      "javax.activation" %  "activation"                  % "1.1.1" % "it, test",
-      "javax.xml.bind"   %  "jaxb-api"                    % "2.3.0" % "it, test",
-      "com.sun.xml.bind" %  "jaxb-core"                   % "2.3.0" % "it, test",
-      "com.sun.xml.bind" %  "jaxb-impl"                   % "2.3.0" % "it, test"
-    ),
+    libraryDependencies ++= allLib,
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
     addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
   )
