@@ -7,16 +7,41 @@
 package com.callfolio
 package portfolio
 
+import java.security.{NoSuchAlgorithmException, SecureRandom, Security}
+
 import avokka.velocypack.{VPackDecoder, VPackEncoder}
 import cats.effect.{ExitCode, IO, IOApp}
+import cats.implicits.toSemigroupKOps
 import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
-import org.http4s.server.blaze.BlazeServerBuilder
+import org.http4s.blaze.server.BlazeServerBuilder
+import org.http4s.server.middleware.{CORS, Logger}
 
 object Main extends IOApp with AppContext {
 
   import User._
 
-  val app = userRoutes[PortfolioAlgebra, VPackEncoder, VPackDecoder].orNotFound
+  // Windows testing hack
+  private def tsecWindowsFix(): Unit =
+    try {
+      SecureRandom.getInstance("NativePRNGNonBlocking")
+      ()
+    } catch {
+      case _: NoSuchAlgorithmException =>
+        val secureRandom = new SecureRandom()
+        val defaultSecureRandomProvider = secureRandom.getProvider.get(s"SecureRandom.${secureRandom.getAlgorithm}")
+        secureRandom.getProvider.put("SecureRandom.NativePRNGNonBlocking", defaultSecureRandomProvider)
+        Security.addProvider(secureRandom.getProvider)
+        ()
+    }
+
+  tsecWindowsFix()
+
+  val authMiddlewareInstance = authMiddleware[PortfolioAlgebra]
+  val routes = publicUserRoutes[PortfolioAlgebra, VPackEncoder, VPackDecoder] <+>
+      authMiddlewareInstance(privateUserRoutes[PortfolioAlgebra])
+  val app = routes.orNotFound
+
+  val corsApp = CORS(Logger.httpApp(true, true)(app))
 
   override def run(args: List[String]): IO[ExitCode] = {
 
@@ -35,7 +60,7 @@ object Main extends IOApp with AppContext {
 
     BlazeServerBuilder[IO](executionContext)
         .bindHttp(serverConfig.port, serverConfig.host)
-        .withHttpApp(app)
+        .withHttpApp(corsApp)
         .serve
         .compile
         .drain

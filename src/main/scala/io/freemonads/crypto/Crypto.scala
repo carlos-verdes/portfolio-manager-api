@@ -18,16 +18,16 @@ case class ValidateAddress(address: String) extends CryptoAlgebra[ApiResult[Stri
 case class ValidateMessage(msg: String, signature: String, publicKey: String) extends CryptoAlgebra[ApiResult[Unit]]
 case class CreateNonce(address: String) extends CryptoAlgebra[ApiResult[String]]
 
-class CryptoDsl[F[_]](implicit I: InjectK[CryptoAlgebra, F]) {
+class CryptoDsl[Algebra[_]](implicit I: InjectK[CryptoAlgebra, Algebra]) {
 
-  def validateAddress[R](address: String): ApiFree[F, String] = EitherT(inject(ValidateAddress(address)))
+  def validateAddress[R](address: String): ApiFree[Algebra, String] = EitherT(inject(ValidateAddress(address)))
 
-  def validateMessage[R](msg: String, signature: String, address: String): ApiFree[F, Unit] =
+  def validateMessage[R](msg: String, signature: String, address: String): ApiFree[Algebra, Unit] =
     EitherT(inject(ValidateMessage(msg, signature, address)))
 
-  def createNonce(address: String): ApiFree[F, String] = EitherT(inject(CreateNonce(address)))
+  def createNonce(address: String): ApiFree[Algebra, String] = EitherT(inject(CreateNonce(address)))
 
-  private def inject = Free.inject[CryptoAlgebra, F]
+  private def inject = Free.liftInject[Algebra]
 }
 
 object CryptoDsl {
