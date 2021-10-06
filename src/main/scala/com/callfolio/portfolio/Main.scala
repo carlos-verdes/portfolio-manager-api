@@ -7,16 +7,17 @@
 package com.callfolio
 package portfolio
 
+
 import java.security.{NoSuchAlgorithmException, SecureRandom, Security}
 
-import avokka.velocypack.{VPackDecoder, VPackEncoder}
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.implicits.toSemigroupKOps
-import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.blaze.server.BlazeServerBuilder
+import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.middleware.{CORS, Logger}
 
-object Main extends IOApp with AppContext {
+
+object Main extends AppContext with IOApp {
 
   import User._
 
@@ -36,9 +37,8 @@ object Main extends IOApp with AppContext {
 
   tsecWindowsFix()
 
-  val authMiddlewareInstance = authMiddleware[PortfolioAlgebra]
-  val routes = publicUserRoutes[PortfolioAlgebra, VPackEncoder, VPackDecoder] <+>
-      authMiddlewareInstance(privateUserRoutes[PortfolioAlgebra])
+  val authMiddlewareInstance = authMiddleware
+  val routes = publicUserRoutes <+> authMiddlewareInstance(privateUserRoutes)
   val app = routes.orNotFound
 
   val corsApp = CORS(Logger.httpApp(true, true)(app))
