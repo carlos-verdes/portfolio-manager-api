@@ -16,6 +16,10 @@ gitRebase:
 		git checkout $(CURRENT_BRANCH) && \
 		git rebase develop
 
+.PHONY: gitAmmend
+gitAmmend:
+	git add . && git commit --amend --no-edit && git push --force origin $(CURRENT_BRANCH)
+
 .PHONY: killJava
 killJava:
 	ps ax | grep java | grep -v 'grep' | cut -d '?' -f1 | xargs kill -9

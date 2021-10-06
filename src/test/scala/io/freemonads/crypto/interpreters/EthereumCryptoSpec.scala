@@ -7,14 +7,14 @@
 package io.freemonads.crypto
 package interpreters
 
-import cats.{Id, ~>}
-import io.freemonads.api._
-import io.freemonads.specs2.Http4FreeMatchers
+import cats.effect.IO
+import io.freemonads.error.{NonAuthorizedError, RequestFormatError}
+import io.freemonads.specs2.Http4FreeIOMatchers
+import io.freemonads.tagless.crypto.CryptoAlgebra
+import io.freemonads.tagless.crypto.ethereum.EthereumCryptoInterpreter
 import org.specs2.Specification
-import org.specs2.matcher.MatchResult
+import org.specs2.matcher.{IOMatchers, MatchResult}
 import org.specs2.specification.core.SpecStructure
-
-import scala.concurrent.duration.FiniteDuration
 
 trait MessagesAndSignatures {
 
@@ -30,11 +30,9 @@ trait MessagesAndSignatures {
   val canonicalAddress = "0x31b26E43651e9371C88aF3D36c14CfD938BaF4Fd"
   val otherAddress = "0xef678007d18427e6022059dbc264f27507cd1ffc"
   val wrongFormatAddress = "ef678007d18427e6022059dbc264f27507cd1ffc"
-
-  implicit val basicInterpreter: CryptoAlgebra ~> Id = ethereumCryptoInterpreter[Id]
 }
 
-class EthereumCryptoSpec extends Specification with Http4FreeMatchers[Id] with MessagesAndSignatures {
+class EthereumCryptoSpec extends Specification with Http4FreeIOMatchers with IOMatchers with MessagesAndSignatures {
   def is: SpecStructure =
     s2"""
         Ethereum Crypto should:
@@ -44,19 +42,16 @@ class EthereumCryptoSpec extends Specification with Http4FreeMatchers[Id] with M
         Reject wrong signataure       $rejectWrongSignature
         """
 
-  implicit val dsl = CryptoDsl.instance[CryptoAlgebra]
+  implicit val dsl: CryptoAlgebra[IO] = new EthereumCryptoInterpreter[IO]
 
-  def passValidAddress: MatchResult[Any] = dsl.validateAddress(walletAddress) must resultOk(canonicalAddress)
+  def passValidAddress: MatchResult[Any] = dsl.validateAddress(walletAddress) must returnValue(canonicalAddress)
 
   def rejectWrongAddress: MatchResult[Any] =
-    dsl.validateAddress(wrongFormatAddress) must resultError[CryptoAlgebra, String, RequestFormatError]
+    dsl.validateAddress(wrongFormatAddress) must returnError[String, RequestFormatError]
 
   def passValidSignature: MatchResult[Any] =
-    dsl.validateMessage(msg, signature, walletAddress) must resultOk(())
+    dsl.validateMessage(msg, signature, walletAddress) must returnValue(())
 
   def rejectWrongSignature: MatchResult[Any] =
-    dsl.validateMessage(msg, signature2, otherAddress) must resultError[CryptoAlgebra, Unit, NonAuthorizedError]
-
-  override protected def runWithTimeout[A](fa: Id[A], timeout: FiniteDuration): A = fa
-  override protected def runAwait[A](fa: Id[A]): A = fa
+    dsl.validateMessage(msg, signature2, otherAddress) must returnError[Unit, NonAuthorizedError]
 }

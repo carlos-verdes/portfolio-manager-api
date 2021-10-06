@@ -10,11 +10,6 @@ ThisBuild / fork := true
 ThisBuild / cancelable := true
 
 
-val Http4FreeVersion = "0.0.9"
-val Http4sSpecs2Version = "1.0.0"
-val Web3jVersion = "5.0.0"
-val DockerTestVersion = "0.9.9"
-
 resolvers ++= Seq(
   Resolver.sonatypeRepo("releases"),
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/public")
@@ -33,6 +28,7 @@ lazy val root = (project in file("."))
     publishMavenStyle := true,
     Compile / herokuAppName := "dfolio-api",
     libraryDependencies ++= allLib,
+    scalacOptions += "-Ymacro-annotations",
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
     addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
   )

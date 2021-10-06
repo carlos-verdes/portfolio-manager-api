@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val ioFreeMonadsVersion = "0.0.10"
+    val ioFreeMonadsVersion = "0.1.2"
     val web3jVersion = "5.0.0"
     //val Http4sSpecs2Version = "1.0.0"
     val dockerTestV = "0.9.9"

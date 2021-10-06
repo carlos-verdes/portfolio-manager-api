@@ -10,14 +10,13 @@ package portfolio
 import java.security.{NoSuchAlgorithmException, SecureRandom, Security}
 import scala.concurrent.Future
 
-import avokka.velocypack.{VPackDecoder, VPackEncoder}
-import cats.effect.IO
+import cats.effect.{ExitCode, IO}
 import com.whisk.docker.impl.spotify.DockerKitSpotify
 import com.whisk.docker.specs2.DockerTestKit
 import io.circe.generic.auto._
 import io.freemonads.arango.DockerArango
-import io.freemonads.http.resource.{ResourceDsl, RestResource}
 import io.freemonads.specs2.Http4FreeIOMatchers
+import io.freemonads.tagless.http.{HttpResource, apiErrorMidleware}
 import org.http4s._
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.headers.Location
@@ -31,7 +30,7 @@ trait UserRoutes extends AppContext with IOMatchers {
 
   import User._
 
-  val routes = publicUserRoutes[PortfolioAlgebra, VPackEncoder, VPackDecoder]
+  val routes = apiErrorMidleware(publicUserRoutes)
 
   val userAddress1 = "0xef678007d18427e6022059dbc264f27507cd1ffc"
   val canonicalAddress1 = "0xef678007D18427E6022059Dbc264f27507CD1ffC"
@@ -73,8 +72,6 @@ class UserIT(env: Env)
     with DockerArango
     with DockerTestKit
     with Http4FreeIOMatchers
-    with IOMatchers
-    with AppContext
     with UserRoutes {
 
   implicit val ee = env.executionEnv
@@ -90,8 +87,6 @@ class UserIT(env: Env)
         Change nonce after wrong authentication                $resetNonce
       """
 
-  val resourceDsl = ResourceDsl.instance[PortfolioAlgebra, VPackEncoder, VPackDecoder]
-
   def arangoIsReady: MatchResult[Future[Boolean]] = isContainerReady(arangoContainer) must beTrue.await
 
   def createUser: MatchResult[Any] = {
@@ -106,33 +101,34 @@ class UserIT(env: Env)
   def authentication: MatchResult[Any] = {
 
     val userWithNonce: User = User(userAddress2, None, testNonce)
-    val userResource = RestResource(User.userUri(userAddress2), userWithNonce)
+    val userResource = HttpResource(User.userUri(userAddress2), userWithNonce)
 
-    val createResourceRequest = resourceDsl.store[User](User.userUri(userAddress2), userWithNonce)
+    val createResourceRequest = storeDsl.store[User](User.userUri(userAddress2), userWithNonce)
     val authReq = routes.orNotFound(Request[IO](Method.POST, uri"/auth").withEntity[AuthRequest](authRequestUser2))
 
-    val getUserRequest = resourceDsl.fetch[User](User.userUri(userAddress2))
+    val getUserRequest = storeDsl.fetch[User](User.userUri(userAddress2))
 
-    (createResourceRequest must resultOk(userResource)) and
+    (createResourceRequest must returnValue(userResource)) and
         (authReq must returnStatus(Ok)) and
-        (getUserRequest.map(_.body.nonce) must not (resultOk(testNonce)))
+        (getUserRequest.map(_.body.nonce) must not (returnValue(testNonce)))
   }
 
   def resetNonce: MatchResult[Any] = {
 
     val userWithNonce: User = User(userAddress3, None, testNonce)
-    val userResource = RestResource(User.userUri(userAddress3), userWithNonce)
+    val userResource = HttpResource(User.userUri(userAddress3), userWithNonce)
 
-    val createResourceRequest = resourceDsl.store[User](User.userUri(userAddress3), userWithNonce)
+    val createResourceRequest = storeDsl.store[User](User.userUri(userAddress3), userWithNonce)
     val authReq = routes.orNotFound(Request[IO](Method.POST, uri"/auth").withEntity[AuthRequest](badAuthRequestUser3))
 
-    val getUserRequest = resourceDsl.fetch[User](User.userUri(userAddress3))
+    val getUserRequest = storeDsl.fetch[User](User.userUri(userAddress3))
 
-    (createResourceRequest must resultOk(userResource)) and
+    (createResourceRequest must returnValue(userResource)) and
         (authReq must returnStatus(Forbidden)) and
-        (getUserRequest.map(_.body.nonce) must not (resultOk(testNonce)))
-
+        (getUserRequest.map(_.body.nonce) must not (returnValue(testNonce)))
   }
 
   def wrongPathNotFound: MatchResult[Any] = wrongPathRequest must returnStatus(NotFound)
+
+  override def run(args: List[String]): IO[ExitCode] = ???
 }
